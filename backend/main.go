@@ -19,5 +19,22 @@ func main() {
 		}
 		return c.JSON(tasks)
 	})
+	app.Post("/tasks", func(c *fiber.Ctx) error {
+		type Task struct {
+			Title string `json:"title"`
+		}
+
+		var newTask Task
+
+		if err := c.BodyParser(&newTask); err != nil {
+			return c.Status(400).SendString("Geçersiz istek gövdesi")
+		}
+
+		return c.Status(201).JSON(fiber.Map{
+			"id":    "3",
+			"title": newTask.Title,
+		})
+	})
+
 	app.Listen(":8080")
 }
