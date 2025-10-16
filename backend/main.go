@@ -34,9 +34,23 @@ func main() {
 	})
 
 	app.Get("/tasks", func(c *fiber.Ctx) error {
-		tasks := []map[string]string{
-			{"id": "1", "title": "Task 1"},
-			{"id": "2", "title": "Task 2"},
+		rows, err := conn.Query(context.Background(), "SELECT id, title FROM tasks")
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch tasks"})
+		}
+		defer rows.Close()
+
+		var tasks []map[string]interface{}
+		for rows.Next() {
+			var id int
+			var title string
+			if err := rows.Scan(&id, &title); err != nil {
+				return c.Status(500).JSON(fiber.Map{"error": "Failed to parse tasks"})
+			}
+			tasks = append(tasks, map[string]interface{}{
+				"id":    id,
+				"title": title,
+			})
 		}
 		return c.JSON(tasks)
 	})
