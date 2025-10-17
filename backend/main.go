@@ -54,6 +54,24 @@ func main() {
 		}
 		return c.JSON(tasks)
 	})
+	app.Put("tasks/:id", func(c *fiber.Ctx) error {
+		id := c.Params("id")
+		var task struct {
+			Title string `json:"title"`
+		}
+		if err := c.BodyParser(&task); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		}
+		if task.Title == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
+		}
+		_, err := conn.Exec(context.Background(),
+			"UPDATE tasks SET title=$1 WHERE id=$2", task.Title, id)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to update task"})
+		}
+		return c.JSON(fiber.Map{"message": "Task updated successfully!"})
+	})
 	app.Post("/tasks", func(c *fiber.Ctx) error {
 		var task struct {
 			Title string `json:"title"`
