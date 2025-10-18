@@ -91,6 +91,16 @@ func main() {
 		}
 		return c.JSON(fiber.Map{"message": "Task created successfully!"})
 	})
+	app.Delete("/tasks/:id", func(c *fiber.Ctx) error {
+		id := c.Params("id")
+
+		_, err := conn.Exec(context.Background(),
+			"DELETE FROM tasks WHERE id=$1", id)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to delete task"})
+		}
+		return c.JSON(fiber.Map{"message": "Task deleted successfully!"})
+	})
 
 	app.Listen(":8080")
 }
