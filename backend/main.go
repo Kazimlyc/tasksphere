@@ -6,6 +6,7 @@ import (
 	"log"
 	// "github.com/gofiber/jwt/v3"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -28,11 +29,63 @@ func main() {
 	}
 	log.Println("Table 'tasks' is ready ✅")
 
+	_, err = conn.Exec(context.Background(), `
+	CREATE TABLE IF NOT EXISTS users(
+	id SERIAL PRIMARY KEY,
+	email TEXT UNIQUE NOT NULL,
+	password TEXT NOT NULL
+	)`)
+	if err != nil {
+		log.Fatalf("Failed to create users table: %v\n", err)
+	}
+	log.Println("Table 'users' is ready ✅")
+
 	app := fiber.New()
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
 
+	app.Post("/tasks", func(c *fiber.Ctx) error {
+		var task struct {
+			Title string `json:"title"`
+		}
+
+		if err := c.BodyParser(&task); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		}
+
+		if task.Title == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
+		}
+		_, err := conn.Exec(context.Background(),
+			"INSERT INTO tasks (title) VALUES ($1)", task.Title)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to save task"})
+		}
+		return c.JSON(fiber.Map{"message": "Task created successfully!"})
+	})
+	app.Post("/register", func(c *fiber.Ctx) error {
+		var user struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := c.BodyParser(&user); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		}
+		if user.Email == "" || user.Password == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "Email and Password are required"})
+		}
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to hash password"})
+		}
+		_, err = conn.Exec(context.Background(), `
+		INSERT INTO users (email, password) VALUES ($1, $2)`, user.Email, string(hashedPassword))
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to register user"})
+		}
+		return c.JSON(fiber.Map{"message": "User registered successfully!"})
+	})
 	app.Get("/tasks", func(c *fiber.Ctx) error {
 		rows, err := conn.Query(context.Background(), "SELECT id, title FROM tasks")
 		if err != nil {
@@ -54,7 +107,7 @@ func main() {
 		}
 		return c.JSON(tasks)
 	})
-	app.Put("tasks/:id", func(c *fiber.Ctx) error {
+	app.Put("/tasks/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 		var task struct {
 			Title string `json:"title"`
@@ -71,25 +124,6 @@ func main() {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to update task"})
 		}
 		return c.JSON(fiber.Map{"message": "Task updated successfully!"})
-	})
-	app.Post("/tasks", func(c *fiber.Ctx) error {
-		var task struct {
-			Title string `json:"title"`
-		}
-
-		if err := c.BodyParser(&task); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
-		}
-
-		if task.Title == "" {
-			return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
-		}
-		_, err := conn.Exec(context.Background(),
-			"INSERT INTO tasks (title) VALUES ($1)", task.Title)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to save task"})
-		}
-		return c.JSON(fiber.Map{"message": "Task created successfully!"})
 	})
 	app.Delete("/tasks/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
