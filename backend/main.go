@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
-	"log"
-	// "github.com/gofiber/jwt/v3"
+	jwtware "github.com/gofiber/jwt/v3"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
+	"log"
+	"os"
+	"time"
 )
 
 func main() {
@@ -41,10 +44,29 @@ func main() {
 	log.Println("Table 'users' is ready ✅")
 
 	app := fiber.New()
+
+	export JWT_SECRET="supergizlianahtar123"
+jwtSecret := os.Getenv("JWT_SECRET")
+if jwtSecret == "" {
+	jwtSecret = "dev-secret-change-me"
+}
+
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
-
+	app.Post("/login", func(c *fiber.Ctx)error{
+		var payload struct {
+			Email string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := c.BodyParser(&payload); er != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		}
+		if payload.Email == "" || payload.Password == "" {
+		return c.Status(400).JSON(fiber.Map{"error":"email and password required"})
+		}
+		
+	})
 	app.Post("/tasks", func(c *fiber.Ctx) error {
 		var task struct {
 			Title string `json:"title"`
