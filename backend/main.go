@@ -3,19 +3,29 @@ package main
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
-	jwtware "github.com/gofiber/jwt/v3"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
+	// jwtware "github.com/gofiber/jwt/v3"
+	// "github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"os"
-	"time"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+
+	}
+
 	var conn *pgx.Conn
 	// Connect to PostgreSQL
-	conn, err := pgx.Connect(context.Background(), "postgres://admin:secret@localhost:5432/tasksphere")
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "dev-secret-change-me"
+	}
+
+	conn, err = pgx.Connect(context.Background(), "postgres://admin:secret@localhost:5432/tasksphere")
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -45,27 +55,24 @@ func main() {
 
 	app := fiber.New()
 
-	export JWT_SECRET="supergizlianahtar123"
-jwtSecret := os.Getenv("JWT_SECRET")
-if jwtSecret == "" {
-	jwtSecret = "dev-secret-change-me"
-}
-
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
-	app.Post("/login", func(c *fiber.Ctx)error{
+	app.Post("/login", func(c *fiber.Ctx) error {
 		var payload struct {
-			Email string `json:"email"`
+			Email    string `json:"email"`
 			Password string `json:"password"`
 		}
-		if err := c.BodyParser(&payload); er != nil {
+		if err := c.BodyParser(&payload); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 		}
 		if payload.Email == "" || payload.Password == "" {
-		return c.Status(400).JSON(fiber.Map{"error":"email and password required"})
+			return c.Status(400).JSON(fiber.Map{"error": "email and password required"})
 		}
-		
+		return c.JSON(fiber.Map{
+			"message": "Login successful",
+			"mail":    payload.Email,
+		})
 	})
 	app.Post("/tasks", func(c *fiber.Ctx) error {
 		var task struct {
