@@ -15,7 +15,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-
+		log.Fatal("Error loading .env file")
 	}
 
 	var conn *pgx.Conn
@@ -25,11 +25,17 @@ func main() {
 		jwtSecret = "dev-secret-change-me"
 	}
 
-	conn, err = pgx.Connect(context.Background(), "postgres://admin:secret@localhost:5432/tasksphere")
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is not set")
+	}
+
+	conn, err = pgx.Connect(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
 	defer conn.Close(context.Background())
+
 	log.Println("Connected to PostgreSQL ✅")
 
 	_, err = conn.Exec(context.Background(), `
