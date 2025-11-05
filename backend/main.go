@@ -6,7 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	// jwtware "github.com/gofiber/jwt/v3"
 	// "github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"os"
@@ -18,11 +18,11 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	var conn *pgx.Conn
+	var pool *pgxpool.Pool
 	// Connect to PostgreSQL
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "dev-secret-change-me"
+		jwtSecret = "JWT_SECRET is not set"
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
@@ -30,15 +30,15 @@ func main() {
 		log.Fatal("DATABASE_URL is not set")
 	}
 
-	conn, err = pgx.Connect(context.Background(), dbURL)
+	pool, err = pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
-	defer conn.Close(context.Background())
+	defer pool.Close()
 
 	log.Println("Connected to PostgreSQL ✅")
 
-	_, err = conn.Exec(context.Background(), `
+	_, err = pool.Exec(context.Background(), `
 	CREATE TABLE IF NOT EXISTS  tasks(
 	id SERIAL PRIMARY KEY,
 	title TEXT NOT NULL
@@ -48,7 +48,7 @@ func main() {
 	}
 	log.Println("Table 'tasks' is ready ✅")
 
-	_, err = conn.Exec(context.Background(), `
+	_, err = pool.Exec(context.Background(), `
 	CREATE TABLE IF NOT EXISTS users(
 	id SERIAL PRIMARY KEY,
 	email TEXT UNIQUE NOT NULL,
@@ -92,7 +92,7 @@ func main() {
 		if task.Title == "" {
 			return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
 		}
-		_, err := conn.Exec(context.Background(),
+		_, err := pool.Exec(context.Background(),
 			"INSERT INTO tasks (title) VALUES ($1)", task.Title)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to save task"})
@@ -114,7 +114,7 @@ func main() {
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to hash password"})
 		}
-		_, err = conn.Exec(context.Background(), `
+		_, err = pool.Exec(context.Background(), `
 		INSERT INTO users (email, password) VALUES ($1, $2)`, user.Email, string(hashedPassword))
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to register user"})
@@ -122,7 +122,7 @@ func main() {
 		return c.JSON(fiber.Map{"message": "User registered successfully!"})
 	})
 	app.Get("/tasks", func(c *fiber.Ctx) error {
-		rows, err := conn.Query(context.Background(), "SELECT id, title FROM tasks")
+		rows, err := pool.Query(context.Background(), "SELECT id, title FROM tasks")
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch tasks"})
 		}
@@ -153,7 +153,7 @@ func main() {
 		if task.Title == "" {
 			return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
 		}
-		_, err := conn.Exec(context.Background(),
+		_, err := pool.Exec(context.Background(),
 			"UPDATE tasks SET title=$1 WHERE id=$2", task.Title, id)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to update task"})
@@ -163,7 +163,7 @@ func main() {
 	app.Delete("/tasks/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
-		_, err := conn.Exec(context.Background(),
+		_, err := pool.Exec(context.Background(),
 			"DELETE FROM tasks WHERE id=$1", id)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to delete task"})
