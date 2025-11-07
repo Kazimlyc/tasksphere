@@ -22,7 +22,7 @@ func main() {
 	// Connect to PostgreSQL
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "JWT_SECRET is not set"
+		log.Fatal("JWT_SECRET is not set")
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
@@ -37,27 +37,6 @@ func main() {
 	defer pool.Close()
 
 	log.Println("Connected to PostgreSQL ✅")
-
-	_, err = pool.Exec(context.Background(), `
-	CREATE TABLE IF NOT EXISTS  tasks(
-	id SERIAL PRIMARY KEY,
-	title TEXT NOT NULL
-	)`)
-	if err != nil {
-		log.Fatalf("Failed to create table: %v\n", err)
-	}
-	log.Println("Table 'tasks' is ready ✅")
-
-	_, err = pool.Exec(context.Background(), `
-	CREATE TABLE IF NOT EXISTS users(
-	id SERIAL PRIMARY KEY,
-	email TEXT UNIQUE NOT NULL,
-	password TEXT NOT NULL
-	)`)
-	if err != nil {
-		log.Fatalf("Failed to create users table: %v\n", err)
-	}
-	log.Println("Table 'users' is ready ✅")
 
 	app := fiber.New()
 
@@ -171,5 +150,5 @@ func main() {
 		return c.JSON(fiber.Map{"message": "Task deleted successfully!"})
 	})
 
-	app.Listen(":8080")
+	log.Fatal(app.Listen(":8080"))
 }
