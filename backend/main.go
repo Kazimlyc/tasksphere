@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
-	// jwtware "github.com/gofiber/jwt/v3"
-	// "github.com/golang-jwt/jwt/v5"
+	jwtware "github.com/gofiber/jwt/v3"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"os"
@@ -54,11 +54,35 @@ func main() {
 		if payload.Email == "" || payload.Password == "" {
 			return c.Status(400).JSON(fiber.Map{"error": "email and password required"})
 		}
+
+		var id int
+		var hashedPassword string
+		err := pool.QueryRow(context.Background(),
+			"SELECT id, password FROM users WHERE email=$1", payload.Email).Scan(&id, &hashedPassword)
+		if err != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "Invalid email or password"})
+		}
+
+		if bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(payload.Password)) != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "Invalid email or password"})
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user_id": id,
+			"email":   payload.Email,
+		})
+
+		tokenString, err := token.SignedString([]byte(jwtSecret))
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
+		}
 		return c.JSON(fiber.Map{
-			"message": "Login successful",
-			"mail":    payload.Email,
+			"token": tokenString,
 		})
 	})
+	app.Use("/tasks", jwtware.New(jwtware.Config{
+		SigningKey: []byte(jwtSecret),
+	}))
 	app.Post("/tasks", func(c *fiber.Ctx) error {
 		var task struct {
 			Title string `json:"title"`
@@ -76,6 +100,13 @@ func main() {
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to save task"})
 		}
+
+		user := c.Locals("user").(*jwt.Token)
+		claims := user.Claims.(jwt.MapClaims)
+		userID := int(claims["user_id"].(float64))
+		_, err = pool.Exec(context.Background(),
+			"INSERT INTO tasks (title, user_id) VALUES ($1, $2)", task.Title, userID)
+
 		return c.JSON(fiber.Map{"message": "Task created successfully!"})
 	})
 	app.Post("/register", func(c *fiber.Ctx) error {
