@@ -3,14 +3,13 @@ package main
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
-	jwtware "github.com/gofiber/jwt/v3"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
 
 	"tasksphere-backend/handlers"
+	"tasksphere-backend/middleware"
 )
 
 func main() {
@@ -45,90 +44,20 @@ func main() {
 		DB:        pool,
 		JWTSecret: jwtSecret,
 	}
+	taskHandler := handlers.TaskHandler{
+		DB: pool,
+	}
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
 	app.Post("/register", authHandler.Register)
 	app.Post("/login", authHandler.Login)
-	app.Use("/tasks", jwtware.New(jwtware.Config{
-		SigningKey: []byte(jwtSecret),
-	}))
-	app.Post("/tasks", func(c *fiber.Ctx) error {
-		var task struct {
-			Title string `json:"title"`
-		}
-
-		if err := c.BodyParser(&task); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
-		}
-
-		if task.Title == "" {
-			return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
-		}
-		_, err := pool.Exec(context.Background(),
-			"INSERT INTO tasks (title) VALUES ($1)", task.Title)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to save task"})
-		}
-
-		user := c.Locals("user").(*jwt.Token)
-		claims := user.Claims.(jwt.MapClaims)
-		userID := int(claims["user_id"].(float64))
-		_, err = pool.Exec(context.Background(),
-			"INSERT INTO tasks (title, user_id) VALUES ($1, $2)", task.Title, userID)
-
-		return c.JSON(fiber.Map{"message": "Task created successfully!"})
-	})
-	app.Get("/tasks", func(c *fiber.Ctx) error {
-		rows, err := pool.Query(context.Background(), "SELECT id, title FROM tasks")
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch tasks"})
-		}
-		defer rows.Close()
-
-		var tasks []map[string]interface{}
-		for rows.Next() {
-			var id int
-			var title string
-			if err := rows.Scan(&id, &title); err != nil {
-				return c.Status(500).JSON(fiber.Map{"error": "Failed to parse tasks"})
-			}
-			tasks = append(tasks, map[string]interface{}{
-				"id":    id,
-				"title": title,
-			})
-		}
-		return c.JSON(tasks)
-	})
-	app.Put("/tasks/:id", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		var task struct {
-			Title string `json:"title"`
-		}
-		if err := c.BodyParser(&task); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
-		}
-		if task.Title == "" {
-			return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
-		}
-		_, err := pool.Exec(context.Background(),
-			"UPDATE tasks SET title=$1 WHERE id=$2", task.Title, id)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to update task"})
-		}
-		return c.JSON(fiber.Map{"message": "Task updated successfully!"})
-	})
-	app.Delete("/tasks/:id", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-
-		_, err := pool.Exec(context.Background(),
-			"DELETE FROM tasks WHERE id=$1", id)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to delete task"})
-		}
-		return c.JSON(fiber.Map{"message": "Task deleted successfully!"})
-	})
+	app.Use("/tasks", middleware.JWTProtected((jwtSecret)))
+	app.Post("/tasks", taskHandler.CreateTask)
+	app.Get("/tasks", taskHandler.GetTasks)
+	app.Put("/tasks/:id", taskHandler.UpdateTask)
+	app.Delete("tasks/:id", taskHandler.DeleteTask)
 
 	log.Fatal(app.Listen(":8080"))
 }

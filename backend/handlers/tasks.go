@@ -88,3 +88,16 @@ func (h *TaskHandler) UpdateTask(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"message": "Task updated successfully"})
 }
+
+func (h *TaskHandler) DeleteTask(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	_, err := h.DB.Exec(context.Background(),
+		"DELETE FROM tasks WHERE id=$1", id)
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete task"})
+	}
+
+	return c.JSON(fiber.Map{"message": "Task deleted successfully!"})
+}
