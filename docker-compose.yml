@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: tasksphere_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: tasksphere
+    ports:
+      - "5432:5432"
+    volumes:
+      - tasksphere_pgdata:/var/lib/postgresql/data
+    networks:
+      - tasksphere_network
+  
+  backend:
+    build: .
+    container_name: tasksphere_backend
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://admin:secret@db:5432/tasksphere?sslmode=disable
+      JWT_SECRET: supersecretkey
+      PORT: 8080
+    ports: 
+      - "8080:8080"
+    networks:
+      - tasksphere_network
+
+networks:
+  tasksphere_network:
+
+volumes:
+  tasksphere_pgdata:
