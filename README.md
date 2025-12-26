@@ -14,6 +14,6 @@ TaskSphere is a project designed to manage and organize tasks with a clear separ
 
 ## Tech Stack
 - Go (backend)
-- JavaScript / frontend framework (see code)
+- JavaScript / frontend framework
 - Docker & Docker Compose
 - HTML / CSS for UI
