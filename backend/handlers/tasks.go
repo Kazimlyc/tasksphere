@@ -2,13 +2,18 @@ package handlers
 
 import (
 	"context"
+	"strconv"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	db "tasksphere-backend/db/sqlc"
 )
 
 type TaskHandler struct {
-	DB *pgxpool.Pool
+	DB      *pgxpool.Pool
+	Queries *db.Queries
 }
 
 func (h *TaskHandler) CreateTask(c *fiber.Ctx) error {
@@ -24,12 +29,15 @@ func (h *TaskHandler) CreateTask(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
 	}
 
-	user := c.Locals("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	userID := int(claims["user_id"].(float64))
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
 
-	_, err := h.DB.Exec(context.Background(),
-		"INSERT INTO tasks (title, user_id) VALUES ($1, $2)", task.Title, userID)
+	err = h.Queries.CreateTask(context.Background(), h.DB, db.CreateTaskParams{
+		Title:  task.Title,
+		UserID: userID,
+	})
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to save task"})
@@ -38,36 +46,33 @@ func (h *TaskHandler) CreateTask(c *fiber.Ctx) error {
 }
 
 func (h *TaskHandler) GetTasks(c *fiber.Ctx) error {
-	user := c.Locals("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	userID := int(claims["user_id"].(float64))
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
 
-	rows, err := h.DB.Query(context.Background(),
-		"SELECT id, title FROM tasks WHERE user_id=$1", userID)
-
+	results, err := h.Queries.ListTasksByUser(context.Background(), h.DB, userID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch tasks"})
 	}
-	defer rows.Close()
 
 	var tasks []map[string]interface{}
-	for rows.Next() {
-		var id int
-		var title string
-		if err := rows.Scan(&id, &title); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to parse tasks"})
-		}
+	for _, task := range results {
 		tasks = append(tasks, map[string]interface{}{
-			"id":    id,
-			"title": title,
+			"id":    task.ID,
+			"title": task.Title,
 		})
 	}
 	return c.JSON(tasks)
-
 }
 
 func (h *TaskHandler) UpdateTask(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idParam := c.Params("id")
+	taskID, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid task id"})
+	}
+
 	var task struct {
 		Title string `json:"title"`
 	}
@@ -80,24 +85,63 @@ func (h *TaskHandler) UpdateTask(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Title is required"})
 	}
 
-	_, err := h.DB.Exec(context.Background(),
-		"UPDATE tasks SET title=$1 WHERE id=$2", task.Title, id)
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	updated, err := h.Queries.UpdateTask(context.Background(), h.DB, db.UpdateTaskParams{
+		Title:  task.Title,
+		ID:     taskID,
+		UserID: userID,
+	})
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update task"})
+	}
+	if updated == 0 {
+		return c.Status(404).JSON(fiber.Map{"error": "Task not found"})
 	}
 	return c.JSON(fiber.Map{"message": "Task updated successfully"})
 }
 
 func (h *TaskHandler) DeleteTask(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idParam := c.Params("id")
+	taskID, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid task id"})
+	}
 
-	_, err := h.DB.Exec(context.Background(),
-		"DELETE FROM tasks WHERE id=$1", id)
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	deleted, err := h.Queries.DeleteTask(context.Background(), h.DB, db.DeleteTaskParams{
+		ID:     taskID,
+		UserID: userID,
+	})
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete task"})
 	}
+	if deleted == 0 {
+		return c.Status(404).JSON(fiber.Map{"error": "Task not found"})
+	}
 
 	return c.JSON(fiber.Map{"message": "Task deleted successfully!"})
+}
+
+func getUserIDFromContext(c *fiber.Ctx) (int64, error) {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	val, ok := claims["user_id"]
+	if !ok {
+		return 0, fiber.ErrUnauthorized
+	}
+	floatVal, ok := val.(float64)
+	if !ok {
+		return 0, fiber.ErrUnauthorized
+	}
+	return int64(floatVal), nil
 }

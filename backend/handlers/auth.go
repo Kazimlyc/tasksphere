@@ -2,17 +2,23 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	db "tasksphere-backend/db/sqlc"
 )
 
 type AuthHandler struct {
 	DB        *pgxpool.Pool
+	Queries   *db.Queries
 	JWTSecret string
 }
 
@@ -31,9 +37,15 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to hash password"})
 	}
-	_, err = h.DB.Exec(context.Background(), `
-		INSERT INTO users (email,password) VALUES ($1, $2)`, user.Email, string(hashedPassword))
+	_, err = h.Queries.CreateUser(context.Background(), h.DB, db.CreateUserParams{
+		Email:    user.Email,
+		Password: string(hashedPassword),
+	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return c.Status(409).JSON(fiber.Map{"error": "User with this email already exists"})
+		}
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to register user"})
 	}
 	return c.JSON(fiber.Map{"message": "User registered successfully!"})
@@ -53,23 +65,22 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "email and password required"})
 	}
 
-	var id int
-	var hashedPassword string
-
-	err := h.DB.QueryRow(context.Background(),
-		"SELECT id, password FROM users WHERE email=$1", payload.Email).Scan(&id, &hashedPassword)
+	user, err := h.Queries.GetUserByEmail(context.Background(), h.DB, payload.Email)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return c.Status(401).JSON(fiber.Map{"error": "Invalid credentials"})
+		}
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid credentials"})
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(payload.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
 	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid credentials"})
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": id,
+		"user_id": user.ID,
 		"email":   payload.Email,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})

@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"tasksphere-backend/config"
+	db "tasksphere-backend/db/sqlc"
 	"tasksphere-backend/handlers"
 	"tasksphere-backend/middleware"
 )
@@ -23,13 +26,17 @@ func main() {
 	defer pool.Close()
 
 	app := fiber.New()
+	app.Use(cors.New())
+	queries := db.New()
 
 	authHandler := handlers.AuthHandler{
 		DB:        pool,
+		Queries:   queries,
 		JWTSecret: cfg.JWTSecret,
 	}
 	taskHandler := handlers.TaskHandler{
-		DB: pool,
+		DB:      pool,
+		Queries: queries,
 	}
 
 	app.Get("/health", func(c *fiber.Ctx) error {

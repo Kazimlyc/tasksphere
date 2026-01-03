@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
@@ -14,8 +15,7 @@ type Config struct {
 }
 
 func Load() *Config {
-
-	godotenv.Load()
+	loadEnv()
 
 	cfg := &Config{
 		DatabaseURL: os.Getenv("DATABASE_URL"),
@@ -35,4 +35,14 @@ func Load() *Config {
 		cfg.Port = "8080"
 	}
 	return cfg
+}
+
+func loadEnv() {
+	// Try current directory first, fall back to the repo root when backend is executed from its own folder.
+	loaders := []string{".env", filepath.Join("..", ".env")}
+	for _, path := range loaders {
+		if err := godotenv.Load(path); err == nil {
+			return
+		}
+	}
 }
