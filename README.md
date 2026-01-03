@@ -1,37 +1,19 @@
 # TaskSphere
 
-Full-stack task manager built with Go (Fiber), PostgreSQL, and React/Vite.
+A full-stack task management platform with modular backend and frontend components.
 
-## Backend
+## Overview
+TaskSphere is a project designed to manage and organize tasks with a clear separation between backend services and frontend UI. The backend is implemented in Go, and the frontend is built with modern web technologies, providing a solid foundation for task tracking and management workflows.
 
-1. Copy `.env.example` (if needed) and set `DATABASE_URL`, `JWT_SECRET`, `PORT`.
-2. Run PostgreSQL + Adminer + backend with Docker:
-   ```bash
-   docker compose up --build
-   ```
-   - Backend: `http://localhost:8080` (if running inside Docker)
-   - Adminer: `http://localhost:8082` (system: PostgreSQL, server: `db`, user `admin`, password `secret`, database `tasksphere`)
-3. Or run backend locally:
-   ```bash
-   cd backend
-   go run main.go
-   ```
+## Features
+- RESTful API for task operations
+- Modular frontend interface
+- Docker-based development setup
+- Task CRUD (Create, Read, Update, Delete)
+- Environment configuration via `.env`
 
-## Frontend
-
-1. Install deps and start dev server (port auto-selects 5173-5200):
-   ```bash
-   npm --prefix frontend install
-   ./scripts/dev.sh
-   ```
-2. Configure API base via `frontend/.env` (`VITE_API_URL=http://localhost:8081`, etc.).
-
-## SQLC
-
-SQL queries live in `backend/db/queries`. Generated Go code is committed in `backend/db/sqlc`.
-
-- Update queries/schema → regenerate:
-  ```bash
-  sqlc generate
-  ```
-- Config: `sqlc.yaml` (PostgreSQL engine, outputs Go code compatible with pgx/v5).
+## Tech Stack
+- Go (backend)
+- JavaScript / frontend framework
+- Docker & Docker Compose
+- HTML / CSS for UI
