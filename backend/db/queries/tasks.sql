@@ -1,9 +1,9 @@
 -- name: CreateTask :exec
-INSERT INTO tasks (title, user_id)
-VALUES ($1, $2);
+INSERT INTO tasks (title, user_id, content)
+VALUES ($1, $2, $3);
 
 -- name: ListTasksByUser :many
-SELECT id, title, created_at, updated_at
+SELECT id, title, content, created_at, updated_at
 FROM tasks
 WHERE user_id = $1
 ORDER BY id;
@@ -11,8 +11,9 @@ ORDER BY id;
 -- name: UpdateTask :execrows
 UPDATE tasks
 SET title = $1,
+    content = $2,
     updated_at = NOW()
-WHERE id = $2 AND user_id = $3;
+WHERE id = $3 AND user_id = $4;
 
 -- name: DeleteTask :execrows
 DELETE FROM tasks

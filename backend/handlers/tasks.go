@@ -18,7 +18,8 @@ type TaskHandler struct {
 
 func (h *TaskHandler) CreateTask(c *fiber.Ctx) error {
 	var task struct {
-		Title string `json:"title"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
 	}
 
 	if err := c.BodyParser(&task); err != nil {
@@ -35,8 +36,9 @@ func (h *TaskHandler) CreateTask(c *fiber.Ctx) error {
 	}
 
 	err = h.Queries.CreateTask(context.Background(), h.DB, db.CreateTaskParams{
-		Title:  task.Title,
-		UserID: userID,
+		Title:   task.Title,
+		UserID:  userID,
+		Content: task.Content,
 	})
 
 	if err != nil {
@@ -59,8 +61,9 @@ func (h *TaskHandler) GetTasks(c *fiber.Ctx) error {
 	var tasks []map[string]interface{}
 	for _, task := range results {
 		tasks = append(tasks, map[string]interface{}{
-			"id":    task.ID,
-			"title": task.Title,
+			"id":      task.ID,
+			"title":   task.Title,
+			"content": task.Content,
 		})
 	}
 	return c.JSON(tasks)
@@ -74,7 +77,8 @@ func (h *TaskHandler) UpdateTask(c *fiber.Ctx) error {
 	}
 
 	var task struct {
-		Title string `json:"title"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
 	}
 
 	if err := c.BodyParser(&task); err != nil {
@@ -91,9 +95,10 @@ func (h *TaskHandler) UpdateTask(c *fiber.Ctx) error {
 	}
 
 	updated, err := h.Queries.UpdateTask(context.Background(), h.DB, db.UpdateTaskParams{
-		Title:  task.Title,
-		ID:     taskID,
-		UserID: userID,
+		Title:   task.Title,
+		Content: task.Content,
+		ID:      taskID,
+		UserID:  userID,
 	})
 
 	if err != nil {

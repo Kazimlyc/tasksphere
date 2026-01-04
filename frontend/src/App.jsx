@@ -34,6 +34,7 @@ function App() {
   const [status, setStatus] = useState('')
   const [tasks, setTasks] = useState([])
   const [taskTitle, setTaskTitle] = useState('')
+  const [taskContent, setTaskContent] = useState('')
   const [loadingTasks, setLoadingTasks] = useState(false)
   const apiBases = useMemo(() => buildApiCandidates(), [])
 
@@ -160,6 +161,7 @@ function App() {
     clearToken()
     setToken('')
     setTaskTitle('')
+    setTaskContent('')
     setStatus('Çıkış yapıldı')
   }
 
@@ -170,12 +172,16 @@ function App() {
     try {
       await request('/tasks', {
         method: 'POST',
-        body: JSON.stringify({ title: taskTitle.trim() }),
+        body: JSON.stringify({
+          title: taskTitle.trim(),
+          content: taskContent.trim(),
+        }),
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
       setTaskTitle('')
+      setTaskContent('')
       fetchTasks()
     } catch (error) {
       setStatus(error.userMessage ?? error.message)
@@ -259,6 +265,12 @@ function App() {
               value={taskTitle}
               onChange={(event) => setTaskTitle(event.target.value)}
             />
+            <textarea
+              placeholder="Kısa açıklama"
+              rows={3}
+              value={taskContent}
+              onChange={(event) => setTaskContent(event.target.value)}
+            />
             <button type="submit">Ekle</button>
           </form>
 
@@ -270,7 +282,10 @@ function App() {
             <ul className="task-list">
               {tasks.map((task) => (
                 <li key={task.id}>
-                  <span>{task.title}</span>
+                  <div className="task-content">
+                    <span className="task-title">{task.title}</span>
+                    {task.content && <p>{task.content}</p>}
+                  </div>
                   <button className="link" onClick={() => handleDeleteTask(task.id)}>
                     Sil
                   </button>
