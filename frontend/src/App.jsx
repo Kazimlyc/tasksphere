@@ -36,6 +36,9 @@ function App() {
   const [taskTitle, setTaskTitle] = useState('')
   const [taskContent, setTaskContent] = useState('')
   const [loadingTasks, setLoadingTasks] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editContent, setEditContent] = useState('')
   const apiBases = useMemo(() => buildApiCandidates(), [])
 
   useEffect(() => {
@@ -162,6 +165,9 @@ function App() {
     setToken('')
     setTaskTitle('')
     setTaskContent('')
+    setEditingTaskId(null)
+    setEditTitle('')
+    setEditContent('')
     setStatus('Çıkış yapıldı')
   }
 
@@ -197,6 +203,46 @@ function App() {
         },
       })
       setTasks((prev) => prev.filter((task) => task.id !== taskId))
+    } catch (error) {
+      setStatus(error.userMessage ?? error.message)
+    }
+  }
+
+  const startEditTask = (task) => {
+    setEditingTaskId(task.id)
+    setEditTitle(task.title ?? '')
+    setEditContent(task.content ?? '')
+  }
+
+  const cancelEditTask = () => {
+    setEditingTaskId(null)
+    setEditTitle('')
+    setEditContent('')
+  }
+
+  const handleUpdateTask = async (event) => {
+    event.preventDefault()
+    if (!editingTaskId || !editTitle.trim()) return
+
+    try {
+      await request(`/tasks/${editingTaskId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          content: editContent.trim(),
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === editingTaskId
+            ? { ...task, title: editTitle.trim(), content: editContent.trim() }
+            : task,
+        ),
+      )
+      cancelEditTask()
     } catch (error) {
       setStatus(error.userMessage ?? error.message)
     }
@@ -282,13 +328,40 @@ function App() {
             <ul className="task-list">
               {tasks.map((task) => (
                 <li key={task.id}>
-                  <div className="task-content">
-                    <span className="task-title">{task.title}</span>
-                    {task.content && <p>{task.content}</p>}
-                  </div>
-                  <button className="link" onClick={() => handleDeleteTask(task.id)}>
-                    Sil
-                  </button>
+                  {editingTaskId === task.id ? (
+                    <form className="form edit" onSubmit={handleUpdateTask}>
+                      <input
+                        value={editTitle}
+                        onChange={(event) => setEditTitle(event.target.value)}
+                      />
+                      <textarea
+                        rows={3}
+                        value={editContent}
+                        onChange={(event) => setEditContent(event.target.value)}
+                      />
+                      <div className="actions">
+                        <button type="submit">Kaydet</button>
+                        <button type="button" className="ghost" onClick={cancelEditTask}>
+                          Vazgeç
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="task-content">
+                        <span className="task-title">{task.title}</span>
+                        {task.content && <p>{task.content}</p>}
+                      </div>
+                      <div className="actions">
+                        <button className="ghost" onClick={() => startEditTask(task)}>
+                          Düzenle
+                        </button>
+                        <button className="link" onClick={() => handleDeleteTask(task.id)}>
+                          Sil
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
