@@ -85,7 +85,8 @@ header h1 {
 }
 
 input,
-textarea {
+textarea,
+select {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0.75rem;
@@ -138,6 +139,10 @@ button.ghost {
   flex: 2;
 }
 
+.form.inline select {
+  flex: 1;
+}
+
 .task-list {
   list-style: none;
   display: flex;
@@ -166,6 +171,13 @@ button.ghost {
 
 .task-title {
   font-weight: 600;
+}
+
+.task-status {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .task-list p {

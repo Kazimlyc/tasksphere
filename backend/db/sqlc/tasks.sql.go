@@ -12,18 +12,24 @@ import (
 )
 
 const createTask = `-- name: CreateTask :exec
-INSERT INTO tasks (title, user_id, content)
-VALUES ($1, $2, $3)
+INSERT INTO tasks (title, user_id, content, status)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateTaskParams struct {
 	Title   string `json:"title"`
 	UserID  int64  `json:"user_id"`
 	Content string `json:"content"`
+	Status  string `json:"status"`
 }
 
 func (q *Queries) CreateTask(ctx context.Context, db DBTX, arg CreateTaskParams) error {
-	_, err := db.Exec(ctx, createTask, arg.Title, arg.UserID, arg.Content)
+	_, err := db.Exec(ctx, createTask,
+		arg.Title,
+		arg.UserID,
+		arg.Content,
+		arg.Status,
+	)
 	return err
 }
 
@@ -45,8 +51,26 @@ func (q *Queries) DeleteTask(ctx context.Context, db DBTX, arg DeleteTaskParams)
 	return result.RowsAffected(), nil
 }
 
+const getTaskStatusByID = `-- name: GetTaskStatusByID :one
+SELECT status
+FROM tasks
+WHERE id = $1 AND user_id = $2
+`
+
+type GetTaskStatusByIDParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) GetTaskStatusByID(ctx context.Context, db DBTX, arg GetTaskStatusByIDParams) (string, error) {
+	row := db.QueryRow(ctx, getTaskStatusByID, arg.ID, arg.UserID)
+	var status string
+	err := row.Scan(&status)
+	return status, err
+}
+
 const listTasksByUser = `-- name: ListTasksByUser :many
-SELECT id, title, content, created_at, updated_at
+SELECT id, title, content, status, created_at, updated_at
 FROM tasks
 WHERE user_id = $1
 ORDER BY id
@@ -56,6 +80,7 @@ type ListTasksByUserRow struct {
 	ID        int64              `json:"id"`
 	Title     string             `json:"title"`
 	Content   string             `json:"content"`
+	Status    string             `json:"status"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
@@ -73,6 +98,7 @@ func (q *Queries) ListTasksByUser(ctx context.Context, db DBTX, userID int64) ([
 			&i.ID,
 			&i.Title,
 			&i.Content,
+			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -90,13 +116,15 @@ const updateTask = `-- name: UpdateTask :execrows
 UPDATE tasks
 SET title = $1,
     content = $2,
+    status = $3,
     updated_at = NOW()
-WHERE id = $3 AND user_id = $4
+WHERE id = $4 AND user_id = $5
 `
 
 type UpdateTaskParams struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	Status  string `json:"status"`
 	ID      int64  `json:"id"`
 	UserID  int64  `json:"user_id"`
 }
@@ -105,6 +133,7 @@ func (q *Queries) UpdateTask(ctx context.Context, db DBTX, arg UpdateTaskParams)
 	result, err := db.Exec(ctx, updateTask,
 		arg.Title,
 		arg.Content,
+		arg.Status,
 		arg.ID,
 		arg.UserID,
 	)

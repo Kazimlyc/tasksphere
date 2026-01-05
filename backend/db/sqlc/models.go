@@ -15,6 +15,7 @@ type Task struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	Content   string             `json:"content"`
+	Status    string             `json:"status"`
 }
 
 type User struct {

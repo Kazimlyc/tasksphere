@@ -35,10 +35,12 @@ function App() {
   const [tasks, setTasks] = useState([])
   const [taskTitle, setTaskTitle] = useState('')
   const [taskContent, setTaskContent] = useState('')
+  const [taskStatus, setTaskStatus] = useState('todo')
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
+  const [editStatus, setEditStatus] = useState('todo')
   const apiBases = useMemo(() => buildApiCandidates(), [])
 
   useEffect(() => {
@@ -165,9 +167,11 @@ function App() {
     setToken('')
     setTaskTitle('')
     setTaskContent('')
+    setTaskStatus('todo')
     setEditingTaskId(null)
     setEditTitle('')
     setEditContent('')
+    setEditStatus('todo')
     setStatus('Çıkış yapıldı')
   }
 
@@ -181,6 +185,7 @@ function App() {
         body: JSON.stringify({
           title: taskTitle.trim(),
           content: taskContent.trim(),
+          status: taskStatus,
         }),
         headers: {
           Authorization: `Bearer ${token}`,
@@ -188,6 +193,7 @@ function App() {
       })
       setTaskTitle('')
       setTaskContent('')
+      setTaskStatus('todo')
       fetchTasks()
     } catch (error) {
       setStatus(error.userMessage ?? error.message)
@@ -212,12 +218,14 @@ function App() {
     setEditingTaskId(task.id)
     setEditTitle(task.title ?? '')
     setEditContent(task.content ?? '')
+    setEditStatus(task.status ?? 'todo')
   }
 
   const cancelEditTask = () => {
     setEditingTaskId(null)
     setEditTitle('')
     setEditContent('')
+    setEditStatus('todo')
   }
 
   const handleUpdateTask = async (event) => {
@@ -230,6 +238,7 @@ function App() {
         body: JSON.stringify({
           title: editTitle.trim(),
           content: editContent.trim(),
+          status: editStatus,
         }),
         headers: {
           Authorization: `Bearer ${token}`,
@@ -238,7 +247,12 @@ function App() {
       setTasks((prev) =>
         prev.map((task) =>
           task.id === editingTaskId
-            ? { ...task, title: editTitle.trim(), content: editContent.trim() }
+            ? {
+                ...task,
+                title: editTitle.trim(),
+                content: editContent.trim(),
+                status: editStatus,
+              }
             : task,
         ),
       )
@@ -317,6 +331,14 @@ function App() {
               value={taskContent}
               onChange={(event) => setTaskContent(event.target.value)}
             />
+            <select
+              value={taskStatus}
+              onChange={(event) => setTaskStatus(event.target.value)}
+            >
+              <option value="todo">Yapılacak</option>
+              <option value="in_progress">Devam ediyor</option>
+              <option value="done">Tamamlandı</option>
+            </select>
             <button type="submit">Ekle</button>
           </form>
 
@@ -339,6 +361,14 @@ function App() {
                         value={editContent}
                         onChange={(event) => setEditContent(event.target.value)}
                       />
+                      <select
+                        value={editStatus}
+                        onChange={(event) => setEditStatus(event.target.value)}
+                      >
+                        <option value="todo">Yapılacak</option>
+                        <option value="in_progress">Devam ediyor</option>
+                        <option value="done">Tamamlandı</option>
+                      </select>
                       <div className="actions">
                         <button type="submit">Kaydet</button>
                         <button type="button" className="ghost" onClick={cancelEditTask}>
@@ -350,6 +380,7 @@ function App() {
                     <>
                       <div className="task-content">
                         <span className="task-title">{task.title}</span>
+                        <span className="task-status">{task.status ?? 'todo'}</span>
                         {task.content && <p>{task.content}</p>}
                       </div>
                       <div className="actions">
