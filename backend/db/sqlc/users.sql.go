@@ -7,44 +7,90 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, password)
-VALUES ($1, $2)
-RETURNING id, email, password, created_at
+INSERT INTO users (email, password, name)
+VALUES ($1, $2, $3)
+RETURNING id, email, password, name, created_at
 `
 
 type CreateUserParams struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Name     string `json:"name"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) (User, error) {
-	row := db.QueryRow(ctx, createUser, arg.Email, arg.Password)
-	var i User
+type CreateUserRow struct {
+	ID        int64              `json:"id"`
+	Email     string             `json:"email"`
+	Password  string             `json:"password"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) (CreateUserRow, error) {
+	row := db.QueryRow(ctx, createUser, arg.Email, arg.Password, arg.Name)
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.Password,
+		&i.Name,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password, created_at
+SELECT id, email, password, name, created_at
 FROM users
 WHERE email = $1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, db DBTX, email string) (User, error) {
+type GetUserByEmailRow struct {
+	ID        int64              `json:"id"`
+	Email     string             `json:"email"`
+	Password  string             `json:"password"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, db DBTX, email string) (GetUserByEmailRow, error) {
 	row := db.QueryRow(ctx, getUserByEmail, email)
-	var i User
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.Password,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, name, created_at
+FROM users
+WHERE id = $1
+`
+
+type GetUserByIDRow struct {
+	ID        int64              `json:"id"`
+	Email     string             `json:"email"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, db DBTX, id int64) (GetUserByIDRow, error) {
+	row := db.QueryRow(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
 		&i.CreatedAt,
 	)
 	return i, err

@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import AuthCard from './components/AuthCard'
+import CreateTaskModal from './components/CreateTaskModal'
+import SidebarMenu from './components/SidebarMenu'
+import StatusMessage from './components/StatusMessage'
+import TaskCard from './components/TaskCard'
 
 const sanitizeBase = (url) => url?.replace(/\/$/, '')
 const buildApiCandidates = () => {
@@ -9,7 +14,7 @@ const buildApiCandidates = () => {
   return Array.from(unique).filter(Boolean)
 }
 
-const initialAuthState = { email: '', password: '' }
+const initialAuthState = { name: '', email: '', password: '' }
 
 const readToken = () => {
   try {
@@ -41,13 +46,18 @@ function App() {
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
   const [editStatus, setEditStatus] = useState('todo')
+  const [profileName, setProfileName] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
   const apiBases = useMemo(() => buildApiCandidates(), [])
 
   useEffect(() => {
     if (token) {
       fetchTasks()
+      fetchProfile()
     } else {
       setTasks([])
+      setProfileName('')
     }
   }, [token])
 
@@ -132,6 +142,22 @@ function App() {
     }
   }
 
+  const fetchProfile = async () => {
+    try {
+      const data = await request('/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      setProfileName(data?.name ?? data?.email ?? '')
+    } catch (error) {
+      if (error.userMessage?.toLowerCase().includes('unauthorized')) {
+        clearToken()
+        setToken('')
+      }
+    }
+  }
+
   const handleAuth = async (event) => {
     event.preventDefault()
     setStatus('')
@@ -172,6 +198,9 @@ function App() {
     setEditTitle('')
     setEditContent('')
     setEditStatus('todo')
+    setProfileName('')
+    setMenuOpen(false)
+    setCreateModalOpen(false)
     setStatus('Çıkış yapıldı')
   }
 
@@ -195,8 +224,17 @@ function App() {
       setTaskContent('')
       setTaskStatus('todo')
       fetchTasks()
+      return true
     } catch (error) {
       setStatus(error.userMessage ?? error.message)
+    }
+    return false
+  }
+
+  const handleCreateTaskAndClose = async (event) => {
+    const created = await handleCreateTask(event)
+    if (created) {
+      setCreateModalOpen(false)
     }
   }
 
@@ -265,139 +303,69 @@ function App() {
   return (
     <div className="page">
       <header>
-        <h1>TaskSphere</h1>
-        <p>Backend API ile tam entegre bir görev listesi</p>
+        <div className="header-row">
+          {token && (
+            <button className="menu-button" onClick={() => setMenuOpen(true)}>
+              Menü
+            </button>
+          )}
+          <div>
+            <h1>TaskSphere</h1>
+            <p>Backend API ile tam entegre bir görev listesi</p>
+          </div>
+        </div>
       </header>
 
-      {status && <div className="status">{status}</div>}
+      <StatusMessage status={status} />
 
       {!token ? (
-        <section className="card">
-          <div className="tabs">
-            <button
-              className={authMode === 'login' ? 'active' : ''}
-              onClick={() => setAuthMode('login')}
-            >
-              Giriş
-            </button>
-            <button
-              className={authMode === 'register' ? 'active' : ''}
-              onClick={() => setAuthMode('register')}
-            >
-              Kayıt
-            </button>
-          </div>
-
-          <form className="form" onSubmit={handleAuth}>
-            <label>
-              E-posta
-              <input
-                type="email"
-                value={authForm.email}
-                required
-                onChange={(event) => setAuthForm((prev) => ({ ...prev, email: event.target.value }))}
-              />
-            </label>
-            <label>
-              Şifre
-              <input
-                type="password"
-                value={authForm.password}
-                required
-                minLength={6}
-                onChange={(event) => setAuthForm((prev) => ({ ...prev, password: event.target.value }))}
-              />
-            </label>
-
-            <button type="submit">{authMode === 'login' ? 'Giriş yap' : 'Kayıt ol'}</button>
-          </form>
-        </section>
+        <AuthCard
+          authMode={authMode}
+          onAuthModeChange={setAuthMode}
+          authForm={authForm}
+          onAuthFormChange={setAuthForm}
+          onSubmit={handleAuth}
+        />
       ) : (
-        <section className="card">
-          <div className="card-header">
-            <h2>Görevlerin</h2>
-            <button onClick={handleLogout}>Çıkış</button>
-          </div>
+        <TaskCard
+          onOpenCreate={() => setCreateModalOpen(true)}
+          tasks={tasks}
+          loadingTasks={loadingTasks}
+          editingTaskId={editingTaskId}
+          editTitle={editTitle}
+          editContent={editContent}
+          editStatus={editStatus}
+          onEditTitleChange={setEditTitle}
+          onEditContentChange={setEditContent}
+          onEditStatusChange={setEditStatus}
+          onStartEdit={startEditTask}
+          onCancelEdit={cancelEditTask}
+          onUpdate={handleUpdateTask}
+          onDelete={handleDeleteTask}
+        />
+      )}
 
-          <form className="form inline" onSubmit={handleCreateTask}>
-            <input
-              placeholder="Yeni görev başlığı"
-              value={taskTitle}
-              onChange={(event) => setTaskTitle(event.target.value)}
-            />
-            <textarea
-              placeholder="Kısa açıklama"
-              rows={3}
-              value={taskContent}
-              onChange={(event) => setTaskContent(event.target.value)}
-            />
-            <select
-              value={taskStatus}
-              onChange={(event) => setTaskStatus(event.target.value)}
-            >
-              <option value="todo">Yapılacak</option>
-              <option value="in_progress">Devam ediyor</option>
-              <option value="done">Tamamlandı</option>
-            </select>
-            <button type="submit">Ekle</button>
-          </form>
+      {token && (
+        <SidebarMenu
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          userName={profileName || 'Kullanıcı'}
+          onLogout={handleLogout}
+        />
+      )}
 
-          {loadingTasks ? (
-            <p>Yükleniyor...</p>
-          ) : tasks.length === 0 ? (
-            <p>Henüz görev yok</p>
-          ) : (
-            <ul className="task-list">
-              {tasks.map((task) => (
-                <li key={task.id}>
-                  {editingTaskId === task.id ? (
-                    <form className="form edit" onSubmit={handleUpdateTask}>
-                      <input
-                        value={editTitle}
-                        onChange={(event) => setEditTitle(event.target.value)}
-                      />
-                      <textarea
-                        rows={3}
-                        value={editContent}
-                        onChange={(event) => setEditContent(event.target.value)}
-                      />
-                      <select
-                        value={editStatus}
-                        onChange={(event) => setEditStatus(event.target.value)}
-                      >
-                        <option value="todo">Yapılacak</option>
-                        <option value="in_progress">Devam ediyor</option>
-                        <option value="done">Tamamlandı</option>
-                      </select>
-                      <div className="actions">
-                        <button type="submit">Kaydet</button>
-                        <button type="button" className="ghost" onClick={cancelEditTask}>
-                          Vazgeç
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <div className="task-content">
-                        <span className="task-title">{task.title}</span>
-                        <span className="task-status">{task.status ?? 'todo'}</span>
-                        {task.content && <p>{task.content}</p>}
-                      </div>
-                      <div className="actions">
-                        <button className="ghost" onClick={() => startEditTask(task)}>
-                          Düzenle
-                        </button>
-                        <button className="link" onClick={() => handleDeleteTask(task.id)}>
-                          Sil
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      {token && (
+        <CreateTaskModal
+          isOpen={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          title={taskTitle}
+          content={taskContent}
+          status={taskStatus}
+          onTitleChange={setTaskTitle}
+          onContentChange={setTaskContent}
+          onStatusChange={setTaskStatus}
+          onSubmit={handleCreateTaskAndClose}
+        />
       )}
     </div>
   )

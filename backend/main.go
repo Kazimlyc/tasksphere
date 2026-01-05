@@ -44,6 +44,8 @@ func main() {
 	})
 	app.Post("/register", authHandler.Register)
 	app.Post("/login", authHandler.Login)
+	app.Use("/me", middleware.JWTProtected((cfg.JWTSecret)))
+	app.Get("/me", authHandler.GetProfile)
 	app.Use("/tasks", middleware.JWTProtected((cfg.JWTSecret)))
 	app.Post("/tasks", taskHandler.CreateTask)
 	app.Get("/tasks", taskHandler.GetTasks)

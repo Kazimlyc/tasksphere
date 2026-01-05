@@ -26,12 +26,13 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var user struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		Name     string `json:"name"`
 	}
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
-	if user.Email == "" || user.Password == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Email and Password are required"})
+	if user.Email == "" || user.Password == "" || user.Name == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Name, Email and Password are required"})
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -40,6 +41,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	_, err = h.Queries.CreateUser(context.Background(), h.DB, db.CreateUserParams{
 		Email:    user.Email,
 		Password: string(hashedPassword),
+		Name:     user.Name,
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -93,5 +95,26 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"message": "Login successful",
 		"token":   tokenString,
+	})
+}
+
+func (h *AuthHandler) GetProfile(c *fiber.Ctx) error {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	user, err := h.Queries.GetUserByID(context.Background(), h.DB, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch user"})
+	}
+
+	return c.JSON(fiber.Map{
+		"id":    user.ID,
+		"email": user.Email,
+		"name":  user.Name,
 	})
 }

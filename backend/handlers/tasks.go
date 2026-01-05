@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -167,20 +166,6 @@ func (h *TaskHandler) DeleteTask(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"message": "Task deleted successfully!"})
-}
-
-func getUserIDFromContext(c *fiber.Ctx) (int64, error) {
-	user := c.Locals("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	val, ok := claims["user_id"]
-	if !ok {
-		return 0, fiber.ErrUnauthorized
-	}
-	floatVal, ok := val.(float64)
-	if !ok {
-		return 0, fiber.ErrUnauthorized
-	}
-	return int64(floatVal), nil
 }
 
 func isValidTaskStatus(status string) bool {
