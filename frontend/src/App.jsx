@@ -329,6 +329,10 @@ function App() {
       ) : (
         <TaskCard
           onOpenCreate={() => setCreateModalOpen(true)}
+          onCreateForStatus={(status) => {
+            setTaskStatus(status)
+            setCreateModalOpen(true)
+          }}
           tasks={tasks}
           loadingTasks={loadingTasks}
           editingTaskId={editingTaskId}

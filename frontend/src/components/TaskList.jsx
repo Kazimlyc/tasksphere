@@ -20,6 +20,7 @@ const TaskList = ({
   onCancelEdit,
   onUpdate,
   onDelete,
+  onCreateForStatus = () => {},
 }) => {
   if (loading) {
     return <p>Yükleniyor...</p>
@@ -31,7 +32,12 @@ const TaskList = ({
       <div className="task-column" key={statusKey}>
         <div className="task-column-header">
           <h3>{statusLabels[statusKey]}</h3>
-          <span>{columnTasks.length}</span>
+          <div className="task-column-actions">
+            <span>{columnTasks.length}</span>
+            <button className="ghost" onClick={() => onCreateForStatus(statusKey)}>
+              +
+            </button>
+          </div>
         </div>
         {columnTasks.length === 0 ? (
           <p className="task-empty">Bu listede görev yok</p>

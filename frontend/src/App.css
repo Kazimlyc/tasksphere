@@ -305,6 +305,12 @@ button.ghost {
   margin-bottom: 0.75rem;
 }
 
+.task-column-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .task-column-header h3 {
   margin: 0;
   font-size: 1rem;

@@ -15,6 +15,7 @@ const TaskCard = ({
   onCancelEdit,
   onUpdate,
   onDelete,
+  onCreateForStatus,
 }) => {
   return (
     <section className="card">
@@ -37,6 +38,7 @@ const TaskCard = ({
         onCancelEdit={onCancelEdit}
         onUpdate={onUpdate}
         onDelete={onDelete}
+        onCreateForStatus={onCreateForStatus}
       />
     </section>
   )
