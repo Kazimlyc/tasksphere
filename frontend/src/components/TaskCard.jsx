@@ -16,12 +16,12 @@ const TaskCard = ({
   onUpdate,
   onDelete,
   onCreateForStatus,
+  onMoveTask,
 }) => {
   return (
     <section className="card">
       <div className="card-header">
         <h2>Görevlerin</h2>
-        <button onClick={onOpenCreate}>Yeni Görev</button>
       </div>
 
       <TaskList
@@ -39,6 +39,7 @@ const TaskCard = ({
         onUpdate={onUpdate}
         onDelete={onDelete}
         onCreateForStatus={onCreateForStatus}
+        onMoveTask={onMoveTask}
       />
     </section>
   )

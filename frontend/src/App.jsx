@@ -300,6 +300,35 @@ function App() {
     }
   }
 
+  const handleMoveTask = async (taskId, nextStatus) => {
+    const target = tasks.find((task) => task.id === taskId)
+    if (!target || target.status === nextStatus) return
+
+    const prevTasks = tasks
+    setTasks((current) =>
+      current.map((task) =>
+        task.id === taskId ? { ...task, status: nextStatus } : task,
+      ),
+    )
+
+    try {
+      await request(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: target.title,
+          content: target.content ?? '',
+          status: nextStatus,
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    } catch (error) {
+      setTasks(prevTasks)
+      setStatus(error.userMessage ?? error.message)
+    }
+  }
+
   return (
     <div className="page">
       <header>
@@ -333,6 +362,7 @@ function App() {
             setTaskStatus(status)
             setCreateModalOpen(true)
           }}
+          onMoveTask={handleMoveTask}
           tasks={tasks}
           loadingTasks={loadingTasks}
           editingTaskId={editingTaskId}

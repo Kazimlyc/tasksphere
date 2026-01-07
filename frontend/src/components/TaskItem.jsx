@@ -12,6 +12,10 @@ const TaskItem = ({
   onUpdate,
   onDelete,
 }) => {
+  const handleDragStart = (event) => {
+    event.dataTransfer.setData('text/plain', String(task.id))
+  }
+
   if (isEditing) {
     return (
       <li>
@@ -39,7 +43,7 @@ const TaskItem = ({
   }
 
   return (
-    <li>
+    <li draggable={!isEditing} onDragStart={handleDragStart}>
       <div className="task-content">
         <span className="task-title">{task.title}</span>
         <span className="task-status">{task.status ?? 'todo'}</span>

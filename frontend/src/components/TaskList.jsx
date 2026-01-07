@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import TaskItem from './TaskItem'
 
 const statusLabels = {
@@ -21,7 +22,9 @@ const TaskList = ({
   onUpdate,
   onDelete,
   onCreateForStatus = () => {},
+  onMoveTask = () => {},
 }) => {
+  const [dragOverStatus, setDragOverStatus] = useState(null)
   if (loading) {
     return <p>Yükleniyor...</p>
   }
@@ -29,7 +32,28 @@ const TaskList = ({
   const renderColumn = (statusKey) => {
     const columnTasks = tasks.filter((task) => (task.status ?? 'todo') === statusKey)
     return (
-      <div className="task-column" key={statusKey}>
+      <div
+        className={`task-column ${dragOverStatus === statusKey ? 'drag-over' : ''}`}
+        key={statusKey}
+        onDragOver={(event) => {
+          event.preventDefault()
+          setDragOverStatus(statusKey)
+        }}
+        onDragLeave={() => {
+          if (dragOverStatus === statusKey) {
+            setDragOverStatus(null)
+          }
+        }}
+        onDrop={(event) => {
+          event.preventDefault()
+          setDragOverStatus(null)
+          const rawId = event.dataTransfer.getData('text/plain')
+          const taskId = Number.parseInt(rawId, 10)
+          if (!Number.isNaN(taskId)) {
+            onMoveTask(taskId, statusKey)
+          }
+        }}
+      >
         <div className="task-column-header">
           <h3>{statusLabels[statusKey]}</h3>
           <div className="task-column-actions">

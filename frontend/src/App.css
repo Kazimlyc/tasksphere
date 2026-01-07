@@ -298,6 +298,10 @@ button.ghost {
   padding: 0.75rem;
 }
 
+.task-column.drag-over {
+  background: rgba(92, 107, 241, 0.18);
+}
+
 .task-column-header {
   display: flex;
   align-items: center;
@@ -336,6 +340,10 @@ button.ghost {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.05);
   gap: 1rem;
+}
+
+.task-list li[draggable='true'] {
+  cursor: grab;
 }
 
 .task-content {
