@@ -17,8 +17,6 @@ WORKDIR /root/
 
 COPY --from=builder /app/server .
 
-COPY .env .
-
 EXPOSE 8080
 
 CMD ["./server"]

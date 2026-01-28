@@ -4,10 +4,12 @@ services:
   db:
     image: postgres:15
     container_name: tasksphere_db
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: tasksphere
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -20,24 +22,14 @@ services:
     container_name: tasksphere_backend
     depends_on:
       - db
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgres://admin:secret@db:5432/tasksphere?sslmode=disable
-      JWT_SECRET: supersecretkey
-      PORT: 8080
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PORT:-8080}
     ports: 
       - "8080:8080"
-    networks:
-      - tasksphere_network
-
-  adminer:
-    image: adminer:4
-    container_name: tasksphere_adminer
-    depends_on:
-      - db
-    environment:
-      - ADMINER_DEFAULT_SERVER=db
-    ports:
-      - "8082:8080"
     networks:
       - tasksphere_network
 
