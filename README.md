@@ -1,19 +1,18 @@
 # TaskSphere
 
-A full-stack task management platform with modular backend and frontend components.
-
-## Overview
-TaskSphere is a project designed to manage and organize tasks with a clear separation between backend services and frontend UI. The backend is implemented in Go, and the frontend is built with modern web technologies, providing a solid foundation for task tracking and management workflows.
+TaskSphere is a full-stack task management platform featuring a high-performance **Go backend** and a reactive **React frontend**. The project is fully containerized using Docker, focusing on RESTful API design, modular architecture, and environment-driven configuration.
 
 ## Features
-- RESTful API for task operations
-- Modular frontend interface
-- Docker-based development setup
-- Task CRUD (Create, Read, Update, Delete)
-- Environment configuration via `.env`
 
-## Tech Stack
-- Go (backend)
-- JavaScript / React.js
-- Docker & Docker Compose
-- HTML / CSS for UI
+- **Task Management:** Full CRUD (Create, Read, Update, Delete) operations for managing workflows.
+- **State Tracking:** Dynamic task status management (Pending, In-Progress, Completed).
+- **Environment Management:** Secure configuration handling via `.env` files.
+- **Containerized Stack:** Multi-service orchestration with Docker and Docker Compose.
+- **Type Safety:** Strict data modeling using Go structs to ensure consistency between the API and the UI.
+
+## Technical Highlights
+
+- **RESTful API:** Developed a modular backend in Go, utilizing the standard library and idiomatic error handling.
+- **JSON Serialization:** Efficient data exchange between Go and React using struct-to-JSON mapping.
+- **Docker Networking:** Configured internal service communication between the backend API and the frontend client.
+
